@@ -52,13 +52,14 @@ GPU 연산이 끝나면 결과를 다시 CPU로 받아와 후속 연산 or 결�
 - 블록과 그리드는 각각 1차원, 2차원, 3차원 형태로 구성 가능
 - 예) dim3 grid(3, 2); → X방향 블록 3개, Y방향 블록 2개 = 총 6개 블록
 - 예) dim3 block(4, 3); → X방향 스레드 4개, - Y방향 스레드 3개 = 블록당 12개 스레드
+```
 최종적으로 그리드 × 블록 × 스레드를 통해 GPU에 동시에 할당될 스레드 수가 결정
-
 Grid: 3 × 2 → 6개의 블록  
 Block: 4 × 3 → 12개의 스레드  
 총 스레드 수 = 6(블록 수) × 12(블록당 스레드) = 72개의 스레드
+```
 ---
-# 3. Cuda Programming Model
+## 3. Cuda Programming Model
 ### 3.1 CUDA 프로그램의 기본 흐름
 #### 3.1.1 CPU(호스트) 제어
 <img width="876" alt="Image" src="https://github.com/user-attachments/assets/40445b80-307a-46ee-9cf5-0eb5e392a826" />
@@ -95,3 +96,32 @@ Block: 4 × 3 → 12개의 스레드
 5. 필요한 경우 디바이스 → 호스트로 결과 복사 (cudaMemcpyDeviceToHost)
 6. 디바이스 메모리 해제 (cudaFree)
 
+## 4. Cuda 메모리 모델
+GPU의 병렬성과 성능을 최대한 끌어내기 위해, 어떤 데이터를 어떤 메모리에 배치할 지 구성하는게 매우 중요하다함
+### 4.1 메모리 모델은 스레드 구조와 따라간다
+CUDA 프로그래밍 모델에는 3단계의 스레드 계층 구조`(스레드 → 블록 → 그리드)`로 되어있음  
+이에 따라 메모리도 크게 3가지 레벨로 나뉨
+![Image](https://github.com/user-attachments/assets/e585c1b3-9af3-4c33-9bd5-5dc2aeec65e8)
+#### 4.1.1 Local(로컬) 메모리
+- 각 스레드가 개인적으로 사용할 수 있는 메모리 다른 스레드와 공유 불가, 스레드가 종료되면 해당 메모리도 사라짐
+
+#### 4.1.2 Shared(공유) 메모리
+- 같은 블록에 속한 스레드들이 공유 블록이 종료되면 해당 메모리도 소멸
+
+#### 4.1.3 Global(글로벌) 메모리
+- 전체 그리드에 속한 모든 스레드가 접근 가능 프로그램 전체(또는 명시적 해제 전) 동안 유효
+
+### 4.2 물리적 메모리 배치
+![Image](https://github.com/user-attachments/assets/4db8911e-fb97-4521-8583-049c51ea1103)
+#### 4.2.1 Off-Chip(오프칩) 메모리
+- 글로벌 메모리(Global Memory)
+- 로컬 메모리(Local Memory)
+- 실제 물리적으로는 GPU 외부에 위치한 DRAM(그래픽 카드 뒷면 메모리 칩 등)
+- 대용량이지만, 접근 속도가 상대적으로 느림 (높은 지연 시간, 낮은 대역폭 대비)
+
+#### 4.2.2 On-Chip(온칩) 메모리
+- 레지스터(Registers)
+- 공유 메모리(Shared Memory)
+- GPU 칩 내부의 Streaming Multiprocessor(SM) 안에 배치
+- 매우 빠른 접근 속도와 낮은 지연 시간 제공
+- 코어(코어)와 SM(Streaming Multiprocessor)
